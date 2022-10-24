@@ -18,7 +18,7 @@ The below examples make use of sample data available in [./data](./data):
 
 <br><hr>
 
-### 1. Simple Query:
+### 1. Simple Query
 Calling `SELECT()` without any arguments will select all columns from whatever the data source:
 ```python
 import pandas as pd
@@ -99,12 +99,14 @@ query = Query(
 |  2 |            1 | Bluth Company     |   2020 |         3 | 2020-09-30 |   796947 |        239084 |   557863 |
 
 
+<br><hr>
+
 ### 5. Calculated Columns
 While string column names are passed as arguments to `SELECT()` for simple column selection, keyword arguments can be used to pass functions that will be used to generate calculated columns:
 
 ```python
 import pandas as pd
-from dataframeql import Query, WITH, SELECT, FROM, JOIN, WHERE, ORDER_BY, FunctionBuilder
+from dataframeql import Query, SELECT, FROM, JOIN, WHERE, ORDER_BY
 
 query = Query(
     SELECT('company_id','name','year','quarter','asofdate',
@@ -130,3 +132,41 @@ print(dataframe.head())
 |  1 |            1 | Bluth Company     |   2020 |         2 | 2020-06-30 |              0.479999 |        -0.00850785 |         -0.0163613 |
 | 13 |            2 | Gobias Industries |   2020 |         2 | 2020-06-30 |              0.700001 |         0.0588005  |          0.0852181 |
 |  2 |            1 | Bluth Company     |   2020 |         3 | 2020-09-30 |              0.559998 |         0.00841336 |          0.0120191 |
+
+
+<br><hr>
+
+### 6. Aggregate Calculations
+Aggregate calculations can be included using `dataframeql.FunctionBuilder`. Note that like standard SQL, only columns listed in the `GROUP_BY()` clause and calculated columns may be selected:
+
+```python
+import pandas as pd
+from dataframeql import Query, SELECT, FROM, JOIN, WHERE, ORDER_BY, FunctionBuilder
+
+fn = FunctionBuilder()
+
+query = Query(
+    SELECT('company_id','name','year',
+        calendar_quarters = fn.count('quarter'),
+        annual_sales = fn.sum('gross_sales'),
+        annual_income = fn.sum('net_income')
+    )
+    .FROM(pd.read_csv(f'./data/financials.csv'))
+    .JOIN(pd.read_csv(f'./data/companies.csv'), left_on='company_id', right_on='id')
+    .WHERE(lambda df: df.name.isin(['Bluth Company','Gobias Industries']))
+    .GROUP_BY('company_id','name','year')
+    .ORDER_BY(by=['year','name'])
+)
+
+dataframe = query.execute()
+print(dataframe.head())
+```
+
+**Output:**
+|    |   company_id | name              |   year |   calendar_quarters |   annual_sales |   annual_income |
+|---:|-------------:|:------------------|-------:|--------------------:|---------------:|----------------:|
+|  0 |            1 | Bluth Company     |   2020 |                   4 |        1128454 |           44286 |
+|  3 |            2 | Gobias Industries |   2020 |                   4 |         951891 |           77179 |
+|  1 |            1 | Bluth Company     |   2021 |                   4 |         956019 |          123078 |
+|  4 |            2 | Gobias Industries |   2021 |                   4 |         845244 |           -1899 |
+|  2 |            1 | Bluth Company     |   2022 |                   4 |         939477 |           86993 |
