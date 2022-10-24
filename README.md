@@ -87,6 +87,9 @@ query = Query(
     .WHERE(lambda df: df.name.isin(['Bluth Company','Gobias Industries']))
     .ORDER_BY(by=['asofdate','name'])
 )
+
+dataframe = query.execute()
+print(dataframe.head())
 ```
 
 **Output:**
@@ -170,3 +173,51 @@ print(dataframe.head())
 |  1 |            1 | Bluth Company     |   2021 |                   4 |         956019 |          123078 |
 |  4 |            2 | Gobias Industries |   2021 |                   4 |         845244 |           -1899 |
 |  2 |            1 | Bluth Company     |   2022 |                   4 |         939477 |           86993 |
+
+
+<br><hr>
+
+### Sub-Queries
+Named subqueries may be used using the `WITH()` clause. Note that like standard SQL, named subqueries must be separated with commas:
+
+```python
+import pandas as pd
+from dataframeql import Query, WITH, SELECT, FROM, JOIN, WHERE, ORDER_BY, FunctionBuilder
+
+fn = FunctionBuilder()
+
+query = Query(
+
+    WITH('annual_income_statement').AS
+    (
+        SELECT('company_id','year',
+            annual_sales = fn.sum('gross_sales'),
+            annual_income = fn.sum('net_income')
+        )
+        .FROM(pd.read_csv(f'./data/financials.csv'))
+        .GROUP_BY('company_id','year')
+    ),
+
+    SELECT('company_id','name','year','assets','liabilities','equity','annual_sales','annual_income')
+    .FROM(pd.read_csv(f'./data/companies.csv'))
+    .JOIN(pd.read_csv(f'./data/financials.csv'), left_on='id', right_on='company_id')
+    .JOIN('annual_income_statement', on=['company_id','year'])
+    .WHERE(lambda df: (df.year==2022) & (df.quarter==4))
+    .ORDER_BY(by=['name'])
+)
+
+dataframe = query.execute()
+print(dataframe.head())
+```
+
+**Output:**
+|    |   company_id | name                |   year |   assets |   liabilities |   equity |   annual_sales |   annual_income |
+|---:|-------------:|:--------------------|-------:|---------:|--------------:|---------:|---------------:|----------------:|
+| 11 |            1 | Bluth Company       |   2022 |   983112 |        540712 |   442400 |         939477 |           86993 |
+| 47 |            4 | Fakeblock, Inc      |   2022 |   601639 |        294803 |   306836 |        1181822 |          133423 |
+| 23 |            2 | Gobias Industries   |   2022 |   981077 |        490538 |   490539 |        1351376 |           63506 |
+| 35 |            3 | Sitwell Enterprises |   2022 |  1014707 |        355147 |   659560 |        1250316 |          162207 |
+
+
+<br><hr>
+
