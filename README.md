@@ -6,7 +6,7 @@ Experimental python libary for manipulating pandas dataframes using a SQL-like s
 ## Quick Start
 1. Clone this repository onto your machine <br> `git clone https://github.com/tniedbala/dataframeql.git`
 
-2. Install `dataframeql` locally using pip (using venv is reccomended) <br> `pip install -e ./path/to/dataframeql` 
+2. Install `dataframeql` locally using pip (using venv is recomended) <br> `pip install -e ./path/to/dataframeql` 
 
 3. That should be all that's needed. Now you can `import dataframeql` from within a python script.
 
