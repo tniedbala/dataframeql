@@ -12,6 +12,21 @@ Experimental python libary for manipulating pandas dataframes using a SQL-like s
 
 <br>
 
+## Notes
+ - Please note that this was put together fairly quickly and has not been tested extensively, so relying on this for any serious usage is not recommended. At the moment this is meant to be experimental only.
+ - A few TODOs:
+    - Subqueries - this *should* already allow for nesting subqueries any arbitrary number of levels deep, though this needs to be tested more thoroughly.  
+    - Add functionality for:
+        - `SELECT_DISTINCT()`
+        - `UNION()`
+        - `UNION_ALL()`
+        - `PIVOT()`
+        - `UNPIVOT()`
+
+
+<br>
+
+
 ## Example Usage
 The below examples make use of sample data available in [./data](./data):
 
@@ -105,7 +120,7 @@ print(dataframe.head())
 <br><hr>
 
 ### 5. Calculated Columns
-While string column names are passed as arguments to `SELECT()` for simple column selection, keyword arguments can be used to pass functions that will be used to generate calculated columns:
+While string column names are passed as arguments to `SELECT()` for simple column selection, keyword arguments can be used to pass functions that produce calculated columns:
 
 ```python
 import pandas as pd
@@ -140,7 +155,7 @@ print(dataframe.head())
 <br><hr>
 
 ### 6. Aggregate Calculations
-Aggregate calculations can be included using `dataframeql.FunctionBuilder`. Note that like standard SQL, only columns listed in the `GROUP_BY()` clause and calculated columns may be selected:
+Aggregate calculations can be included using `dataframeql.FunctionBuilder`. Note that like traditional SQL, only columns listed in the `GROUP_BY()` clause in addition to calculated columns may be selected:
 
 ```python
 import pandas as pd
@@ -177,8 +192,8 @@ print(dataframe.head())
 
 <br><hr>
 
-### Sub-Queries
-Named subqueries may be used using the `WITH()` clause. Note that like standard SQL, named subqueries must be separated with commas:
+### 7. Named Sub-Queries
+Named subqueries may be created using the `WITH()` clause. Note that like traditional SQL, named subqueries must be separated with commas:
 
 ```python
 import pandas as pd
@@ -221,3 +236,40 @@ print(dataframe.head())
 
 <br><hr>
 
+### 8. Inline Sub-Queries
+Subqueries may also be defined directly within the `FROM()` clause, similiarly to traditional SQL statements:
+
+```python
+import pandas as pd
+from dataframeql import Query, WITH, SELECT, FROM, JOIN, WHERE, ORDER_BY, FunctionBuilder
+
+fn = FunctionBuilder()
+
+query = Query(
+
+    SELECT('company_id','name','year','assets','liabilities','equity','annual_sales','annual_income')
+    .FROM(pd.read_csv(f'./data/companies.csv'))
+    .JOIN(pd.read_csv(f'./data/financials.csv'), left_on='id', right_on='company_id')
+    .JOIN(
+        SELECT('company_id','year',
+            annual_sales = fn.sum('gross_sales'),
+            annual_income = fn.sum('net_income')
+        )
+        .FROM(pd.read_csv(f'./data/financials.csv'))
+        .GROUP_BY('company_id','year')
+    , on=['company_id','year'])
+    .WHERE(lambda df: (df.year==2022) & (df.quarter==4))
+    .ORDER_BY(by=['name'])
+)
+
+dataframe = query.execute()
+print(dataframe.head())
+```
+
+**Output:**
+|    |   company_id | name                |   year |   assets |   liabilities |   equity |   annual_sales |   annual_income |
+|---:|-------------:|:--------------------|-------:|---------:|--------------:|---------:|---------------:|----------------:|
+| 11 |            1 | Bluth Company       |   2022 |   983112 |        540712 |   442400 |         939477 |           86993 |
+| 47 |            4 | Fakeblock, Inc      |   2022 |   601639 |        294803 |   306836 |        1181822 |          133423 |
+| 23 |            2 | Gobias Industries   |   2022 |   981077 |        490538 |   490539 |        1351376 |           63506 |
+| 35 |            3 | Sitwell Enterprises |   2022 |  1014707 |        355147 |   659560 |        1250316 |          162207 |
