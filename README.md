@@ -41,7 +41,7 @@ The below examples make use of sample data available in [./data](./data):
 Calling `SELECT()` without any arguments will select all columns from whatever the data source:
 ```python
 import pandas as pd
-from dataframeql import Query, SELECT, FROM
+from dataframeql import Query, SELECT
 
 query = Query(
     SELECT()
@@ -53,7 +53,7 @@ print(dataframe.head())
 ```
 
 **Output:**
-|    |   id | name                | CEO                  |
+|    |   id | name                | ceo                  |
 |---:|-----:|:--------------------|:---------------------|
 |  0 |    1 | Bluth Company       | Lucille Bluth        |
 |  1 |    2 | Gobias Industries   | G.O.B.               |
@@ -67,10 +67,10 @@ print(dataframe.head())
 String column names can be passed as arguments to `SELECT()` to retrieve a subset of columns:
 ```python
 import pandas as pd
-from dataframeql import Query, SELECT, FROM
+from dataframeql import Query, SELECT
 
 query = Query(
-    SELECT('name','CEO')
+    SELECT('name','ceo')
     .FROM(pd.read_csv(f'./data/companies.csv'))
 )
 
@@ -79,7 +79,7 @@ print(dataframe.head())
 ```
 
 **Output:**
-|    | name                | CEO                  |
+|    | name                | ceo                  |
 |---:|:--------------------|:---------------------|
 |  0 | Bluth Company       | Lucille Bluth        |
 |  1 | Gobias Industries   | G.O.B.               |
@@ -97,7 +97,7 @@ print(dataframe.head())
 
 ```python
 import pandas as pd
-from dataframeql import Query, SELECT, FROM, JOIN, WHERE, ORDER_BY
+from dataframeql import Query, SELECT
 
 query = Query(
     SELECT('company_id','name','year','quarter','asofdate','assets','liabilities','equity')
@@ -128,11 +128,11 @@ While string column names are passed as arguments to `SELECT()` for simple colum
 
 ```python
 import pandas as pd
-from dataframeql import Query, SELECT, FROM, JOIN, WHERE, ORDER_BY
+from dataframeql import Query, SELECT
 
 query = Query(
     SELECT('company_id','name','year','quarter','asofdate',
-        gross_profit_margin = lambda df: df.gross_margin / df.gross_sales,
+        gross_profit_margin = lambda df: df.gross_margin / df.sales,
         return_on_assets = lambda df: df.net_income / df.assets,
         return_on_equity = lambda df: df.net_income / df.equity,
     )
@@ -163,14 +163,14 @@ Aggregate calculations can be included using `dataframeql.FunctionBuilder`. Note
 
 ```python
 import pandas as pd
-from dataframeql import Query, SELECT, FROM, JOIN, WHERE, ORDER_BY, FunctionBuilder
+from dataframeql import Query, SELECT, FunctionBuilder
 
 fn = FunctionBuilder()
 
 query = Query(
     SELECT('company_id','name','year',
         calendar_quarters = fn.count('quarter'),
-        annual_sales = fn.sum('gross_sales'),
+        annual_sales = fn.sum('sales'),
         annual_income = fn.sum('net_income')
     )
     .FROM(pd.read_csv(f'./data/financials.csv'))
@@ -201,7 +201,7 @@ Named subqueries may be created using the `WITH()` clause. Note that like tradit
 
 ```python
 import pandas as pd
-from dataframeql import Query, WITH, SELECT, FROM, JOIN, WHERE, ORDER_BY, FunctionBuilder
+from dataframeql import Query, WITH, SELECT, FunctionBuilder
 
 fn = FunctionBuilder()
 
@@ -210,7 +210,7 @@ query = Query(
     WITH('annual_income_statement').AS
     (
         SELECT('company_id','year',
-            annual_sales = fn.sum('gross_sales'),
+            annual_sales = fn.sum('sales'),
             annual_income = fn.sum('net_income')
         )
         .FROM(pd.read_csv(f'./data/financials.csv'))
@@ -245,7 +245,7 @@ Subqueries may also be defined directly within the `FROM()` clause, similiarly t
 
 ```python
 import pandas as pd
-from dataframeql import Query, WITH, SELECT, FROM, JOIN, WHERE, ORDER_BY, FunctionBuilder
+from dataframeql import Query, SELECT, FunctionBuilder
 
 fn = FunctionBuilder()
 
@@ -256,7 +256,7 @@ query = Query(
     .JOIN(pd.read_csv(f'./data/financials.csv'), left_on='id', right_on='company_id')
     .JOIN(
         SELECT('company_id','year',
-            annual_sales = fn.sum('gross_sales'),
+            annual_sales = fn.sum('sales'),
             annual_income = fn.sum('net_income')
         )
         .FROM(pd.read_csv(f'./data/financials.csv'))
